@@ -2,7 +2,7 @@
 
 此fork专为TQM Craft打造，因此代码中包括若干硬编码常量，缺乏相关的文档/用法等支持
 
-这些主要集中在chatbridge\impi\cqhttp\entry.py
+主要更改位于 https://github.com/meng877/ChatBridge/blob/master/chatbridge/impl/cqhttp/entry.py
 
 # 此fork所做的更改:
 
