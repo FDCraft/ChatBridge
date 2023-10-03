@@ -1,3 +1,22 @@
+# 免责声明：
+
+此fork专为TQM Craft打造，因此代码中包括若干硬编码常量，缺乏相关的文档/用法等支持
+
+这些主要集中在chatbridge\impi\cqhttp\entry.py
+
+# 此fork所做的更改:
+
+转发所有信息，不再需要!!qq 和!!mc
+
+将CQ码转发成更容易理解的格式
+
+增加指令!!info 基于MCSM api 获取服务器运行情况
+
+!!info 效果:![3608cfa99a9ad724f799be77b186288](https://github.com/meng877/ChatBridge/assets/58868172/57b3fe90-56e4-4f16-897d-6af19e2778b3)
+
+
+
+
 # ChatBridge
 
 > Broadcast chat between Minecraft servers or even discord server
