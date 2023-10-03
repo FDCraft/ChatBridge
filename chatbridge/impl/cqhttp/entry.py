@@ -1,12 +1,17 @@
 import html
 import json
+import re
+from mcdreforged.api.all import *
 from typing import Optional
+
+import requests
+import matplotlib.pyplot as plt
 
 import websocket
 
 from chatbridge.common.logger import ChatBridgeLogger
 from chatbridge.core.client import ChatBridgeClient
-from chatbridge.core.network.protocol import ChatPayload, CommandPayload, CustomPayload
+from chatbridge.core.network.protocol import ChatPayload, CommandPayload
 from chatbridge.impl import utils
 from chatbridge.impl.cqhttp.config import CqHttpConfig
 from chatbridge.impl.tis.protocol import StatsQueryResult, OnlineQueryResult
@@ -30,6 +35,34 @@ StatsHelpMessage = '''
 !!stats custom time_since_rest -bot
 '''.strip()
 
+
+
+@new_thread('get_server_info')
+def get_server_info(self):
+	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=114514" #记得把114514改成自己MCSM的API key， 
+	headers = {"x-requested-with": "xmlhttprequest"}
+	req = requests.get(url, headers=headers)
+	data = req.json()
+	if data["status"] == 200:
+		for i, server in enumerate(data["data"]):
+			cpu_data = [point["cpu"] for point in server["cpuMemChart"]]
+			mem_data = [point["mem"] for point in server["cpuMemChart"]]
+
+			plt.rc('font',family='FangSong')
+			plt.figure()
+			plt.plot(cpu_data, color="red", label="CPU")
+			plt.plot(mem_data, color="blue", label="RAM")
+			plt.ylim(0, 100)
+			plt.xlim(0, 200)
+			plt.title(f"服务器{i+1}的CPU和RAM占用率")
+			plt.xlabel("时间")
+			plt.legend()
+			plt.grid()
+			plt.savefig(f'C:\server\qq_bot\data\images\server_{i+1}.png', dpi=300)
+			self.send_text(f"服务器{i+1}的信息如下：\n实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}\n内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB\n内存占用率：{server['system']['memUsage']*100:.2f}%\nCPU占用率：{server['system']['cpuUsage']*100:.2f}%\n[CQ:image,file=server_{i+1}.png]")
+
+	else:
+		return(f"请求失败，状态码为{data['status']}")
 
 class CQBot(websocket.WebSocketApp):
 	def __init__(self, config: CqHttpConfig):
@@ -64,13 +97,30 @@ class CQBot(websocket.WebSocketApp):
 						self.logger.info('!!ping command triggered')
 						self.send_text('pong!!')
 
-					if len(args) >= 2 and args[0] == '!!mc':
-						self.logger.info('!!mc command triggered')
+					if len(args) >= 1:
 						sender = data['sender']['card']
 						if len(sender) == 0:
 							sender = data['sender']['nickname']
-						text = html.unescape(data['raw_message'].split(' ', 1)[1])
-						chatClient.broadcast_chat(text, sender)
+						message = data['raw_message']
+						message = re.sub(r'\[CQ:image,file=.*?]','[图片]', message)
+						message = re.sub(r'\[CQ:share,file=.*?]','[链接]', message)
+						message = re.sub(r'\[CQ:face,id=.*?]','[表情]', message)
+						message = re.sub(r'\[CQ:record,file=.*?]','[语音]', message)
+						message = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", message)
+						pattern = r"\[CQ:at,qq=(\d+)\]"
+						if re.search(pattern, message): #用于将[CQ:at,qq=某人的qq号]转发为[@某人的群昵称]
+							id_list = re.findall(pattern, message)
+							for id in id_list:
+								#下方url请更改为你自己cqhttp bot的http请求地址，格式为 http://<ip(通常为127.0.0.1)>:<端口>/get_group_member_info?group_id=<群号>&user_id={id}&no_cache=true&access_token=<你的access_token(没有可不填)>
+								card = requests.get(f"http://127.0.0.1:5700/get_group_member_info?group_id=114514&user_id={id}&no_cache=true&access_token=114514").json()['data']['card']
+								message = re.sub(pattern, f"[@{card}]", message, count=1)
+						text = html.unescape(message)
+						chatClient.send_chat(text, sender)
+
+					if len(args) == 1 and args[0] == '!!info':  #基于MCSM获取服务器运行信息，不用MCSM就把这几行删了，用的话请修改第42行的url
+						self.logger.info('!!info command triggered')
+						self.send_text('正在通过 api.tqmcraft.net 获取服务器运行信息，请稍后...') #其实api.tqmcraft.net根本没有解析到任何ip，这行只是为了好看，当然你也可以把它删了
+						get_server_info(self)
 
 					if len(args) == 1 and args[0] == '!!online':
 						self.logger.info('!!online command triggered')
@@ -132,17 +182,11 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 		if cq_bot is None:
 			return
 		try:
-			try:
-				prefix, message = payload.message.split(' ', 1)
-			except:
-				pass
-			else:
-				if prefix == '!!qq':
-					self.logger.info('Triggered command, sending message {} to qq'.format(payload.formatted_str()))
-					payload.message = message
-					cq_bot.send_message(sender, payload.formatted_str())
+			self.logger.info('Sending message {} to qq'.format(payload.formatted_str()))
+			cq_bot.send_message(sender, payload.formatted_str())
 		except:
 			self.logger.exception('Error in on_message()')
+
 
 	def on_command(self, sender: str, payload: CommandPayload):
 		if not payload.responded:
@@ -161,22 +205,6 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 		elif payload.command == '!!online':
 			result = OnlineQueryResult.deserialize(payload.result)
 			cq_bot.send_text('====== 玩家列表 ======\n{}'.format('\n'.join(result.data)))
-
-	def on_custom(self, sender: str, payload: CustomPayload):
-		global cq_bot
-		if cq_bot is None:
-			return
-		try:
-			__example_data = {
-				'cqhttp_client.action': 'send_text',
-				'text': 'the message you want to send'
-			}
-			if payload.data.get('cqhttp_client.action') == 'send_text':
-				text = payload.data.get('text')
-				self.logger.info('Triggered custom text, sending message {} to qq'.format(text))
-				cq_bot.send_text(text)
-		except:
-			self.logger.exception('Error in on_custom()')
 
 
 def main():
