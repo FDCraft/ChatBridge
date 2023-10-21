@@ -7,7 +7,9 @@
 		"zh_cn": "跨服聊天"
     },
     "author": [
-        "Fallen_Breath"
+        "Fallen_Breath",
+        "Polaris_Light",
+        "WhitePhosphor"
     ],
     "link": "https://github.com/TISUnion/ChatBridge",
     "dependencies": {
