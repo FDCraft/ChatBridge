@@ -1,3 +1,15 @@
+# 此fork所做的更改
+
+- 重写Kook客户端以适配新版本的Python与khl.py by Polaris_Light
+
+- 转发所有信息，不再需要!!qq 和!!mc by meng877
+
+- 将CQ码转发成更容易理解的格式 by meng877
+
+- 增加指令!!info 基于MCSM api 获取服务器运行情况 by meng 877
+
+- QQChannel适配 by WhitePhosphor
+
 # ChatBridge
 
 > Broadcast chat between Minecraft servers or even discord server
