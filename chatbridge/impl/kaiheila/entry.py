@@ -1,9 +1,11 @@
 import asyncio
 import collections
-import json
 import logging
+import matplotlib.pyplot as plt
 import queue
-from typing import Optional, List
+import requests
+from mcdreforged.api.all import *
+from typing import Optional, List, Union
 
 from khl import Bot, Message
 from khl._types import MessageTypes
@@ -34,6 +36,7 @@ class KaiHeiLaConfig(ClientConfig):
 	client_to_query_stats: str = 'MyClient1'
 	client_to_query_online: str = 'MyClient2'
 	server_display_name: str = 'TIS'
+	mcsm_apikey: str = ''
 
 
 class MessageDataType:
@@ -48,7 +51,6 @@ logging.basicConfig(level='INFO')
 config: KaiHeiLaConfig
 khlBot: Optional['KaiHeiLaBot'] = None
 chatClient: Optional['KhlChatBridgeClient'] = None
-
 
 class KaiHeiLaBot(Bot):
 	def __init__(self, config: KaiHeiLaConfig):
@@ -128,6 +130,44 @@ class KaiHeiLaBot(Bot):
 	def formatMessageToKaiHeiLa(self, message: str) -> str:
 		# TODO when khl supports markdown
 		return message
+	
+	async def get_server_info(self, channel_id: str):
+		url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=" + self.config.mcsm_apikey
+		headers = {"x-requested-with": "xmlhttprequest"}
+		req = requests.get(url, headers=headers)
+		data = req.json()
+		if data["status"] == 200:
+			for i, server in enumerate(data["data"]):
+				cpu_data = [point["cpu"] for point in server["cpuMemChart"]]
+				mem_data = [point["mem"] for point in server["cpuMemChart"]]
+
+				plt.figure()
+				plt.plot(cpu_data, color="red", label="CPU")
+				plt.plot(mem_data, color="blue", label="RAM")
+				plt.ylim(0, 100)
+				plt.xlim(0, 200)
+				plt.title("CPU & RAM")
+				plt.xlabel("Time")
+				plt.legend()
+				plt.grid()
+				plt.savefig(f'./image/server_{i+1}.png', dpi=300)
+				img_src = await self.client.create_asset(f'./image/server_{i+1}.png')
+				self.messages.put(MessageData(
+					data=Card(
+					Module.Header(fr"服务器{i+1}的信息如下"),
+					Module.Divider(),
+					Module.Section(fr"实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}"),
+					Module.Section(fr"内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB"),
+					Module.Section(fr"内存占用率：{server['system']['memUsage']*100:.2f}%"),
+					Module.Section(fr"CPU占用率：{server['system']['cpuUsage']*100:.2f}%"),
+					Module.Container(Element.Image(src=img_src))
+					),
+					channel=channel_id, type=MessageDataType.CARD)
+				)
+				
+
+		else:
+			self.messages.put(MessageData(data=f"请求失败，状态码为{data['status']}",channel=channel_id, type=MessageDataType.TEXT))
 
 
 def createKaiHeiLaBot() -> KaiHeiLaBot:
@@ -183,6 +223,12 @@ def createKaiHeiLaBot() -> KaiHeiLaBot:
 			await msg.reply(StatsCommandHelpMessage)
 		else:
 			await send_chatbridge_command(config.client_to_query_stats, command, msg)
+
+	@bot.command(name='info', prefixes=[config.command_prefix])  #基于MCSM获取服务器运行信息
+	async def info(msg: Message):
+		if msg.ctx.channel.id in bot.config.channels_for_command:
+			await bot.send(msg.ctx.channel, '正在获取服务器运行信息，请稍后...')
+			await bot.get_server_info(msg.ctx.channel.id)
 
 	return bot
 
