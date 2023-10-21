@@ -2,6 +2,8 @@
 
 - 重写Kook客户端以适配新版本的Python与khl.py by Polaris_Light
 
+- 使用OnlinePlayerAPi替代繁琐的OnlineCommandClient by Polaris_Light
+
 - 转发所有信息，不再需要!!qq 和!!mc by meng877
 
 - 将CQ码转发成更容易理解的格式 by meng877
@@ -61,7 +63,7 @@ ChatBridge 是一个为 TIS 服务器定制使用的工具，尤其是 bot/指�
 - CQHttp 客户端
 - Discord 客户端
 - Kaiheila 客户端
-- Online 指令客户端
+- ~~Online 指令客户端~~
 
 因此，对于这些 bot 及相关的客户端：
 
@@ -219,7 +221,7 @@ Extra configure fields (compared to [CLI client](#cli-client))
 Extra requirements (also listed in `/chatbridge/impl/kaiheila/requirements.txt`):
 
 ```
-khl.py==0.0.10
+khl.py>=0.3.16
 ```
 
 Extra configure fields (compared to [CLI client](#cli-client))
@@ -239,7 +241,24 @@ Extra configure fields (compared to [CLI client](#cli-client))
     "server_display_name": "TIS"  // The name of the server, used for display in some places
 ```
 
-## Client to respond online command
+## QQ Channel client
+
+`python ChatBridge.pyz qchannel_bot`
+
+```
+qq-bot>=0.8.5
+```
+
+Extra configure fields (compared to [CLI client](#cli-client))
+
+```json5
+    "appid": "1" 
+	"token": "11" // A token.
+	"guild_id": "1" // Guild ID.
+	"channel_id": "1" // Channel ID.
+```
+
+## Client to respond online command(Unuse Now)
 
 ```
 python ChatBridge.pyz online_command

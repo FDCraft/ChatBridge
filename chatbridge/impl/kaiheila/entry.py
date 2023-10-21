@@ -139,6 +139,8 @@ def createKaiHeiLaBot() -> KaiHeiLaBot:
 		author = msg.author.username
 		chatClient.logger.debug('channel id = {}'.format(channel_id))
 		if channel_id in config.channels_for_command or channel_id == config.channel_for_chat:
+			if r'"type":"card"' in msg.content:
+				msg.content = r'[卡片消息]'
 			chatClient.logger.info(f"{channel_id}: {author}: {msg.content}")
 			if channel_id == config.channel_for_chat:
 				if not msg.content.startswith(config.command_prefix):

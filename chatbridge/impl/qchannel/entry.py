@@ -1,15 +1,23 @@
-import qqbot, re
+import qqbot
+import re
+from typing import Optional, List
+
 
 from chatbridge.core.client import ChatBridgeClient
 from chatbridge.core.config import ClientConfig
 from chatbridge.core.network.protocol import ChatPayload, CommandPayload
-from chatbridge.impl.qchannel.config import QQChannelConfig
 from chatbridge.impl import utils
 
 ConfigFile = 'ChatBridge_QChannel.json'
 LogFile = 'ChatBridge_QChannel.log'
 RetryTime = 3
 RemoveReg = re.compile(r'<@!\d+> ')
+
+class QQChannelConfig(ClientConfig):
+	appid: str = '1'
+	token: str = '11'
+	guild_id: str = '1'
+	channel_id: str = '1'
 
 
 class QChannelBot():

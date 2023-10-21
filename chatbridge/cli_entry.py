@@ -34,6 +34,10 @@ def kaiheila_bot():
 	from chatbridge.impl.kaiheila import entry
 	entry.main()
 
+def qchannel_bot():
+	from chatbridge.impl.qchannel import entry
+	entry.main()
+
 
 def main():
 	if len(sys.argv) == 2:
@@ -51,4 +55,4 @@ def main():
 		print('{} cqhttp_bot: Start a CQ-Http bot as client'.format(prefix))
 		print('{} kaiheila_bot: Start a Kaiheila bot as client'.format(prefix))
 		print('{} online_command: Start a OnlineCommand bot as client'.format(prefix))
-
+		print('{} qchannel_bot: Start a QQChannel bot as client'.format(prefix))
