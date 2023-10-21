@@ -5,7 +5,7 @@ from mcdreforged.api.all import *
 from chatbridge.core.client import ChatBridgeClient
 from chatbridge.core.network.protocol import ChatPayload, CommandPayload
 from chatbridge.impl.mcdr.config import MCDRClientConfig
-from chatbridge.impl.tis.protocol import StatsQueryResult
+from chatbridge.impl.tis.protocol import StatsQueryResult, OnlineQueryResult
 
 
 class ChatBridgeMCDRClient(ChatBridgeClient):
@@ -69,6 +69,14 @@ class ChatBridgeMCDRClient(ChatBridgeClient):
 					result = StatsQueryResult.create(stats_name, lines[1:-1], total)
 				else:
 					result = StatsQueryResult.unknown_stat()
+		
+		if command == '!!online':
+			try:
+				import online_player_api
+			except (ImportError, ModuleNotFoundError):
+				result = OnlineQueryResult.no_plugin()
+			else:
+				result = OnlineQueryResult.create(online_player_api.get_player_list())
 
 		if result is not None:
 			self.reply_command(sender, payload, result)

@@ -209,7 +209,17 @@ class KhlChatBridgeClient(ChatBridgeClient):
 				khlBot.add_message(message, channel_id, MessageDataType.TEXT)
 		elif payload.command == '!!online':
 			result: OnlineQueryResult = OnlineQueryResult.deserialize(payload.result)
-			khlBot.add_embed('{} online players'.format(config.server_display_name), '\n'.join(result.data), channel_id)
+			if result.success:
+				if result.data == []:
+					khlBot.add_message('当前没有玩家在线！', channel_id, MessageDataType.TEXT)
+				else:
+					khlBot.add_embed('{} 玩家列表'.format(config.server_display_name), '\n'.join(result.data), channel_id)
+			else:
+				if result.error_code == 2:
+					message = '未找到OnlinePlayerAPI插件'
+				else:
+					message = '错误代码：{}'.format(result.error_code)
+				khlBot.add_message(message, channel_id, MessageDataType.TEXT)
 
 
 def main():

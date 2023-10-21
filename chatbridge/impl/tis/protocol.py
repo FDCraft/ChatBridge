@@ -27,8 +27,21 @@ class StatsQueryResult(Serializable):
 
 
 class OnlineQueryResult(Serializable):
+	error_code: int = 0
 	data: List[str]
+
+	@property
+	def success(self) -> bool:
+		return self.error_code == 0
 
 	@classmethod
 	def create(cls, data: List[str]) -> 'OnlineQueryResult':
 		return OnlineQueryResult(data=data)
+	
+	@classmethod
+	def unknown(cls) -> 'StatsQueryResult':
+		return StatsQueryResult(error_code=1)
+
+	@classmethod
+	def no_plugin(cls) -> 'StatsQueryResult':
+		return StatsQueryResult(error_code=2)

@@ -204,8 +204,13 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 				cq_bot.send_text('StatsHelper 插件未加载')
 		elif payload.command == '!!online':
 			result = OnlineQueryResult.deserialize(payload.result)
-			cq_bot.send_text('====== 玩家列表 ======\n{}'.format('\n'.join(result.data)))
-
+			if result.success:
+				if result.data == []:
+					cq_bot.send_text('当前没有玩家在线！')
+				else:
+					cq_bot.send_text('====== 玩家列表 ======\n{}'.format('\n'.join(result.data)))
+			elif result.error_code == 2:
+				cq_bot.send_text('OnlinePlayerAPI 插件未加载')
 
 def main():
 	global chatClient, cq_bot
