@@ -3,6 +3,7 @@ CommandHelpMessage = '''
 `!!ping`: pong!!
 `!!stats`: 显示stats指令的帮助信息
 `!!online`: 显示服务器玩家在线状态
+`!!info`: 显示服务器运行情况
 '''.strip()
 
 

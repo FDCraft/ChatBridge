@@ -25,51 +25,28 @@ CQHelpMessage = '''
 !!ping: pong!!
 !!mc <消息>: 向 MC 中发送聊天信息 <消息>
 !!online: 显示正版通道在线列表
+!!info: 显示服务器运行情况
 !!stats <类别> <内容> [<-bot>]: 查询统计信息 <类别>.<内容> 的排名
 '''.strip()
 StatsHelpMessage = '''
-!!stats <类别> <内容> [<-bot>]
-添加 `-bot` 来列出 bot
+`!!stats rank <类别> <内容> [<-bot>] [<-all>]`
+添加`-bot`显示包含bot的排名（bot过滤逻辑挺简陋的）
+添加`-all`显示所有玩家的排名，刷屏预警
+`<类别>`: `killed`, `killed_by`, `dropped`, `picked_up`, `used`, `mined`, `broken`, `crafted`, `custom`
+更多详情见：[统计信息wiki](https://wiki.biligame.com/mc/%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF)
 例子:
-!!stats used diamond_pickaxe
-!!stats custom time_since_rest -bot
+`!!stats rank used diamond_pickaxe`
+`!!stats rank custom time_since_rest -bot`
 '''.strip()
 
 
-
-@new_thread('get_server_info')
-def get_server_info(self):
-	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=114514" #记得把114514改成自己MCSM的API key， 
-	headers = {"x-requested-with": "xmlhttprequest"}
-	req = requests.get(url, headers=headers)
-	data = req.json()
-	if data["status"] == 200:
-		for i, server in enumerate(data["data"]):
-			cpu_data = [point["cpu"] for point in server["cpuMemChart"]]
-			mem_data = [point["mem"] for point in server["cpuMemChart"]]
-
-			plt.rc('font',family='FangSong')
-			plt.figure()
-			plt.plot(cpu_data, color="red", label="CPU")
-			plt.plot(mem_data, color="blue", label="RAM")
-			plt.ylim(0, 100)
-			plt.xlim(0, 200)
-			plt.title(f"服务器{i+1}的CPU和RAM占用率")
-			plt.xlabel("时间")
-			plt.legend()
-			plt.grid()
-			plt.savefig(f'C:\server\qq_bot\data\images\server_{i+1}.png', dpi=300)
-			self.send_text(f"服务器{i+1}的信息如下：\n实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}\n内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB\n内存占用率：{server['system']['memUsage']*100:.2f}%\nCPU占用率：{server['system']['cpuUsage']*100:.2f}%\n[CQ:image,file=server_{i+1}.png]")
-
-	else:
-		return(f"请求失败，状态码为{data['status']}")
 
 class CQBot(websocket.WebSocketApp):
 	def __init__(self, config: CqHttpConfig):
 		self.config = config
 		websocket.enableTrace(True)
-		url = 'ws://{}:{}/'.format(self.config.ws_address, self.config.ws_port)
-		if self.config.access_token is not None:
+		url = 'ws://{}:{}/'.format(self.config.http_address, self.config.http_port)
+		if self.config.access_token is not None and self.config.access_token != '':
 			url += '?access_token={}'.format(self.config.access_token)
 		self.logger = ChatBridgeLogger('Bot', file_handler=chatClient.logger.file_handler)
 		self.logger.info('Connecting to {}'.format(url))
@@ -77,7 +54,7 @@ class CQBot(websocket.WebSocketApp):
 		super().__init__(url, on_message=self.on_message, on_close=self.on_close)
 
 	def start(self):
-		self.run_forever()
+		self.run_forever(ping_interval=60,ping_timeout=5)
 
 	def on_message(self, _, message: str):
 		try:
@@ -87,8 +64,24 @@ class CQBot(websocket.WebSocketApp):
 			if data.get('post_type') == 'message' and data.get('message_type') == 'group':
 				if data['anonymous'] is None and data['group_id'] == self.config.react_group_id:
 					self.logger.info('QQ chat message: {}'.format(data))
-					args = data['raw_message'].split(' ')
+					if self.config.array:
+						args = []
+						raw_message = ''
+						#{'message_type': 'group', 'sub_type': 'normal', 'message_id': 0, 'group_id': 389548214, 'user_id': 995905922, 'anonymous': None, 'message': [{'type': 'text', 'data': {'text': '？\n'}}]}
+						for element in data['message']:
+							if element['type'] == 'text':
+								args.append(element['data']['text'])
+							else:
+								CQCode = []
+								for param, argue in element['data'].items():
+									CQCode.append(f'{param}={argue}')
+								args.append(fr"[CQ:{element['type']},{','.join(CQCode)}]")
+						raw_message = ' '.join(args)
+					else:
+						raw_message = data['raw_message']
 
+					args = raw_message.split(' ')
+					
 					if len(args) == 1 and args[0] == '!!help':
 						self.logger.info('!!help command triggered')
 						self.send_text(CQHelpMessage)
@@ -99,23 +92,24 @@ class CQBot(websocket.WebSocketApp):
 
 					if len(args) >= 1:
 						sender = data['sender']['card']
-						if len(sender) == 0:
+						if data['sender']['card'] is None:
 							sender = data['sender']['nickname']
-						message = data['raw_message']
-						message = re.sub(r'\[CQ:image,file=.*?]','[图片]', message)
-						message = re.sub(r'\[CQ:share,file=.*?]','[链接]', message)
-						message = re.sub(r'\[CQ:face,id=.*?]','[表情]', message)
-						message = re.sub(r'\[CQ:record,file=.*?]','[语音]', message)
-						message = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", message)
-						pattern = r"\[CQ:at,qq=(\d+)\]"
-						if re.search(pattern, message): #用于将[CQ:at,qq=某人的qq号]转发为[@某人的群昵称]
-							id_list = re.findall(pattern, message)
-							for id in id_list:
-								#下方url请更改为你自己cqhttp bot的http请求地址，格式为 http://<ip(通常为127.0.0.1)>:<端口>/get_group_member_info?group_id=<群号>&user_id={id}&no_cache=true&access_token=<你的access_token(没有可不填)>
-								card = requests.get(f"http://127.0.0.1:5700/get_group_member_info?group_id=114514&user_id={id}&no_cache=true&access_token=114514").json()['data']['card']
-								message = re.sub(pattern, f"[@{card}]", message, count=1)
-						text = html.unescape(message)
-						chatClient.send_chat(text, sender)
+						msg = raw_message
+						msg = re.sub(r'\[CQ:image,file=.*?]','[图片]', msg)
+						msg = re.sub(r'\[CQ:share,file=.*?]','[链接]', msg)
+						msg = re.sub(r'\[CQ:face,id=.*?]','[表情]', msg)
+						msg = re.sub(r'\[CQ:record,file=.*?]','[语音]', msg)
+						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
+						msg = re.sub(r"\[CQ:at,qq=.*?\]", "[@]", msg)
+#						pattern = r"\[CQ:at,qq=(\d+)\]"
+#						if re.search(pattern, msg): #用于将[CQ:at,qq=某人的qq号]转发为[@某人的群昵称]
+#							id_list = re.findall(pattern, msg)
+#							for id in id_list:
+#								#下方url请更改为你自己cqhttp bot的http请求地址，格式为 http://<ip(通常为127.0.0.1)>:<端口>/get_group_member_info?group_id=<群号>&user_id={id}&no_cache=true&access_token=<你的access_token(没有可不填)>
+#								card = requests.get(f"http://127.0.0.1:5700/get_group_member_info?group_id=114514&user_id={id}&no_cache=true&access_token=114514").json()['data']['card']
+#								msg = re.sub(pattern, f"[@{card}]", msg, count=1)
+						text = html.unescape(msg)
+						chatClient.broadcast_chat(text, author=sender)
 
 					if len(args) == 1 and args[0] == '!!info':  #基于MCSM获取服务器运行信息，不用MCSM就把这几行删了，用的话请修改第42行的url
 						self.logger.info('!!info command triggered')
@@ -134,8 +128,8 @@ class CQBot(websocket.WebSocketApp):
 
 					if len(args) >= 1 and args[0] == '!!stats':
 						self.logger.info('!!stats command triggered')
-						command = '!!stats rank ' + ' '.join(args[1:])
-						if len(args) == 0 or len(args) - int(command.find('-bot') != -1) != 3:
+						command = '!!stats ' + ' '.join(args[1:])
+						if len(args) == 1 or len(args) - int(command.find('-bot') != -1) - int(command.find('-all') != -1) != 4:
 							self.send_text(StatsHelpMessage)
 							return
 						if chatClient.is_online:
@@ -174,6 +168,33 @@ class CQBot(websocket.WebSocketApp):
 
 	def send_message(self, sender: str, message: str):
 		self.send_text('[{}] {}'.format(sender, message))
+
+
+@new_thread('get_server_info')
+def get_server_info(self: CQBot):
+	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey="  + self.config.mcsm_apikey 
+	headers = {"x-requested-with": "xmlhttprequest"}
+	req = requests.get(url, headers=headers)
+	data = req.json()
+	if data["status"] == 200:
+		for i, server in enumerate(data["data"]):
+			cpu_data = [point["cpu"] for point in server["cpuMemChart"]]
+			mem_data = [point["mem"] for point in server["cpuMemChart"]]
+
+			plt.figure()
+			plt.plot(cpu_data, color="red", label="CPU")
+			plt.plot(mem_data, color="blue", label="RAM")
+			plt.ylim(0, 100)
+			plt.xlim(0, 200)
+			plt.title("CPU & RAM")
+			plt.xlabel("Time")
+			plt.legend()
+			plt.grid()
+			plt.savefig(f'./image/server_{i+1}.png', dpi=300)
+			self.send_text(f"服务器{i+1}的信息如下：\n实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}\n内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB\n内存占用率：{server['system']['memUsage']*100:.2f}%\nCPU占用率：{server['system']['cpuUsage']*100:.2f}%\n[CQ:image,file=server_{i+1}.png]")
+
+	else:
+		return(f"请求失败，状态码为{data['status']}")
 
 
 class CqHttpChatBridgeClient(ChatBridgeClient):
