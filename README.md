@@ -3,7 +3,9 @@
 - 重写Kook客户端以适配新版本的Python与khl.py by Polaris_Light
 
 - 使用[OnlinePlayerAPi](https://github.com/AnzhiZhang/MCDReforgedPlugins/tree/master/online_player_api)替代繁琐的OnlineCommandClient by Polaris_Light
-                                        
+  
+- 增加将Array转为CQCode的选项，以适配更多无头客户端 by Polaris_Light
+  
 - 转发所有信息，不再需要!!qq 和!!mc by meng877
 
 - 将CQ码转发成更容易理解的格式 by meng877
@@ -211,6 +213,7 @@ Extra configure fields (compared to [CLI client](#cli-client))
     "http_address": "127.0.0.1",
     "http_port": 6700,
     "access_token": "access_token.here",
+	"array": false, // Whether use array-like message, usually false
     "react_group_id": 12345,  // the target QQ group id
     "client_to_query_stats": "MyClient1",  // it should be a client as an MCDR plugin, with stats_helper plugin installed in the MCDR
     "client_to_query_online": "MyClient2",  // a client described in the following section "Client to respond online command"

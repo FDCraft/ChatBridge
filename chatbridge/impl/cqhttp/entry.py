@@ -67,7 +67,6 @@ class CQBot(websocket.WebSocketApp):
 					if self.config.array:
 						args = []
 						raw_message = ''
-						#{'message_type': 'group', 'sub_type': 'normal', 'message_id': 0, 'group_id': 389548214, 'user_id': 995905922, 'anonymous': None, 'message': [{'type': 'text', 'data': {'text': '？\n'}}]}
 						for element in data['message']:
 							if element['type'] == 'text':
 								args.append(element['data']['text'])
