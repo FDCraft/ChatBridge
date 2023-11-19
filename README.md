@@ -1,8 +1,6 @@
 # 此fork所做的更改
 
 - 重写Kook客户端以适配新版本的Python与khl.py by Polaris_Light
-
-- 使用[OnlinePlayerAPi](https://github.com/AnzhiZhang/MCDReforgedPlugins/tree/master/online_player_api)替代繁琐的OnlineCommandClient by Polaris_Light
   
 - 增加将Array转为CQCode的选项，以适配更多无头客户端 by Polaris_Light
   
