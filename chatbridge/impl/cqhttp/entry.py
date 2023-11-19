@@ -45,7 +45,7 @@ class CQBot(websocket.WebSocketApp):
 	def __init__(self, config: CqHttpConfig):
 		self.config = config
 		websocket.enableTrace(True)
-		url = 'ws://{}:{}/'.format(self.config.http_address, self.config.http_port)
+		url = 'ws://{}:{}/'.format(self.config.ws_address, self.config.ws_port)
 		if self.config.access_token is not None and self.config.access_token != '':
 			url += '?access_token={}'.format(self.config.access_token)
 		self.logger = ChatBridgeLogger('Bot', file_handler=chatClient.logger.file_handler)

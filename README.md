@@ -210,8 +210,8 @@ Extra configure fields (compared to [CLI client](#cli-client))
 `http_address`, `http_port` and `access_token` are the same as the value in the config file of coolq-http-api
 
 ```json5
-    "http_address": "127.0.0.1",
-    "http_port": 6700,
+    "ws_address": "127.0.0.1",
+    "ws_port": 6700,
     "access_token": "access_token.here",
 	"array": false, // Whether use array-like message, usually false
     "react_group_id": 12345,  // the target QQ group id
