@@ -62,7 +62,7 @@ class CQBot(websocket.WebSocketApp):
 				return
 			data = json.loads(message)
 			if data.get('post_type') == 'message' and data.get('message_type') == 'group':
-				if data['anonymous'] is None and data['group_id'] == self.config.react_group_id:
+				if data['anonymous'] is None and data['group_id'] == self.config.react_group_id and data['user_id'] != data['self_id']:
 					self.logger.info('QQ chat message: {}'.format(data))
 					if self.config.array:
 						args = []
@@ -75,7 +75,7 @@ class CQBot(websocket.WebSocketApp):
 								for param, argue in element['data'].items():
 									CQCode.append(f'{param}={argue}')
 								args.append(fr"[CQ:{element['type']},{','.join(CQCode)}]")
-						raw_message = ' '.join(args)
+						raw_message = ''.join(args)
 					else:
 						raw_message = data['raw_message']
 
@@ -148,7 +148,12 @@ class CQBot(websocket.WebSocketApp):
 			"action": "send_group_msg",
 			"params": {
 				"group_id": self.config.react_group_id,
-				"message": text
+				"message":[{
+					"type": "text",
+					"data": {
+						"text": text
+					}
+				}]
 			}
 		}
 		self.send(json.dumps(data))

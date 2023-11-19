@@ -126,10 +126,6 @@ class KaiHeiLaBot(Bot):
 				theme='secondary', size='lg'),
 			channel=channel_id, type=MessageDataType.CARD)
 		)
-
-	def formatMessageToKaiHeiLa(self, message: str) -> str:
-		# TODO when khl supports markdown
-		return message
 	
 	async def get_server_info(self, channel_id: str):
 		url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=" + self.config.mcsm_apikey
