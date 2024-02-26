@@ -1,5 +1,7 @@
+import base64
 import html
 import json
+import os
 import re
 from mcdreforged.api.all import *
 from typing import Optional
@@ -14,7 +16,10 @@ from chatbridge.core.client import ChatBridgeClient
 from chatbridge.core.network.protocol import ChatPayload, CommandPayload
 from chatbridge.impl import utils
 from chatbridge.impl.cqhttp.config import CqHttpConfig
+from chatbridge.impl.cqhttp.translate import *
 from chatbridge.impl.tis.protocol import StatsQueryResult, OnlineQueryResult
+
+
 
 ConfigFile = 'ChatBridge_CQHttp.json'
 cq_bot: Optional['CQBot'] = None
@@ -33,7 +38,7 @@ StatsHelpMessage = '''
 添加`-bot`显示包含bot的排名（bot过滤逻辑挺简陋的）
 添加`-all`显示所有玩家的排名，刷屏预警
 `<类别>`: `killed`, `killed_by`, `dropped`, `picked_up`, `used`, `mined`, `broken`, `crafted`, `custom`
-更多详情见：[统计信息wiki](https://wiki.biligame.com/mc/%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF)
+更多详情见：[统计信息wiki](https://zh.minecraft.wiki/w/%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF)
 例子:
 `!!stats rank used diamond_pickaxe`
 `!!stats rank custom time_since_rest -bot`
@@ -46,8 +51,8 @@ class CQBot(websocket.WebSocketApp):
 		self.config = config
 		websocket.enableTrace(True)
 		url = 'ws://{}:{}/'.format(self.config.ws_address, self.config.ws_port)
-		if self.config.access_token is not None and self.config.access_token != '':
-			url += '?access_token={}'.format(self.config.access_token)
+		if self.config.ws_access_token is not None and self.config.ws_access_token != '':
+			url += '?access_token={}'.format(self.config.ws_access_token)
 		self.logger = ChatBridgeLogger('Bot', file_handler=chatClient.logger.file_handler)
 		self.logger.info('Connecting to {}'.format(url))
 		# noinspection PyTypeChecker
@@ -62,20 +67,10 @@ class CQBot(websocket.WebSocketApp):
 				return
 			data = json.loads(message)
 			if data.get('post_type') == 'message' and data.get('message_type') == 'group':
-				if data['anonymous'] is None and data['group_id'] == self.config.react_group_id and data['user_id'] != data['self_id']:
+				if data['group_id'] == self.config.react_group_id and data['user_id'] != data['self_id']:
 					self.logger.info('QQ chat message: {}'.format(data))
 					if self.config.array:
-						args = []
-						raw_message = ''
-						for element in data['message']:
-							if element['type'] == 'text':
-								args.append(element['data']['text'])
-							else:
-								CQCode = []
-								for param, argue in element['data'].items():
-									CQCode.append(f'{param}={argue}')
-								args.append(fr"[CQ:{element['type']},{','.join(CQCode)}]")
-						raw_message = ''.join(args)
+						raw_message = from_array_to_cqcode(data['message'])
 					else:
 						raw_message = data['raw_message']
 
@@ -93,26 +88,38 @@ class CQBot(websocket.WebSocketApp):
 						sender = data['sender']['card']
 						if data['sender']['card'] is None:
 							sender = data['sender']['nickname']
+
 						msg = raw_message
-						msg = re.sub(r'\[CQ:image,file=.*?]','[图片]', msg)
-						msg = re.sub(r'\[CQ:share,file=.*?]','[链接]', msg)
-						msg = re.sub(r'\[CQ:face,id=.*?]','[表情]', msg)
-						msg = re.sub(r'\[CQ:record,file=.*?]','[语音]', msg)
+						msg = re.sub(r'\[CQ:share,file=.*?\]','[链接]', msg)
+						msg = re.sub(r'\[CQ:face,id=.*?\]','[表情]', msg)
+						msg = re.sub(r'\[CQ:record,file=.*?\]','[语音]', msg)
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
-						msg = re.sub(r"\[CQ:at,qq=.*?\]", "[@]", msg)
-#						pattern = r"\[CQ:at,qq=(\d+)\]"
-#						if re.search(pattern, msg): #用于将[CQ:at,qq=某人的qq号]转发为[@某人的群昵称]
-#							id_list = re.findall(pattern, msg)
-#							for id in id_list:
-#								#下方url请更改为你自己cqhttp bot的http请求地址，格式为 http://<ip(通常为127.0.0.1)>:<端口>/get_group_member_info?group_id=<群号>&user_id={id}&no_cache=true&access_token=<你的access_token(没有可不填)>
-#								card = requests.get(f"http://127.0.0.1:5700/get_group_member_info?group_id=114514&user_id={id}&no_cache=true&access_token=114514").json()['data']['card']
-#								msg = re.sub(pattern, f"[@{card}]", msg, count=1)
+
+						if self.config.image_view:
+							msg = re.sub(r'\[CQ:image,file=(.*?)]',r'[[CICode,url=\1,name=图片]]', msg)
+						else:
+							msg = re.sub(r'\[CQ:image,file=.*?]','[图片]', msg)
+
+						pattern = r"\[CQ:at,qq=(\d+)\]"
+						if re.search(pattern, msg): 
+							id_list = re.findall(pattern, msg)
+							for id in id_list:
+								api = f"http://{self.config.http_address}:{self.config.http_port}/get_group_member_info?group_id={self.config.react_group_id}&user_id={id}&no_cache=true"
+								if self.config.http_access_token is not None and self.config.http_access_token != '':
+									api += '&access_token={}'.format(self.config.http_access_token)
+								req = requests.get(api).json()
+								if req is not None:
+									card = req['data']['card'] if req['data']['card'] is not None else req['data']['nickname']
+									msg = re.sub(pattern, f"[@{card}]", msg, count=1)
+								else:
+									msg = re.sub(pattern, "[@]", msg, count=1)
+								
 						text = html.unescape(msg)
 						chatClient.broadcast_chat(text, author=sender)
 
-					if len(args) == 1 and args[0] == '!!info':  #基于MCSM获取服务器运行信息，不用MCSM就把这几行删了，用的话请修改第42行的url
+					if len(args) == 1 and args[0] == '!!info':
 						self.logger.info('!!info command triggered')
-						self.send_text('正在通过 api.tqmcraft.net 获取服务器运行信息，请稍后...') #其实api.tqmcraft.net根本没有解析到任何ip，这行只是为了好看，当然你也可以把它删了
+						self.send_text('正在通过api获取服务器运行信息，请稍后...')
 						get_server_info(self)
 
 					if len(args) == 1 and args[0] == '!!online':
@@ -158,6 +165,16 @@ class CQBot(websocket.WebSocketApp):
 		}
 		self.send(json.dumps(data))
 
+	def send_message(self, message):
+		data = {
+			"action": "send_group_msg",
+			"params": {
+				"group_id": self.config.react_group_id,
+				"message": message
+			}
+		}
+		self.send(json.dumps(data))		
+
 	def send_text(self, text):
 		msg = ''
 		length = 0
@@ -170,13 +187,10 @@ class CQBot(websocket.WebSocketApp):
 				msg = ''
 				length = 0
 
-	def send_message(self, sender: str, message: str):
-		self.send_text('[{}] {}'.format(sender, message))
-
 
 @new_thread('get_server_info')
 def get_server_info(self: CQBot):
-	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey="  + self.config.mcsm_apikey 
+	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=" + self.config.mcsm_apikey 
 	headers = {"x-requested-with": "xmlhttprequest"}
 	req = requests.get(url, headers=headers)
 	data = req.json()
@@ -194,11 +208,26 @@ def get_server_info(self: CQBot):
 			plt.xlabel("Time")
 			plt.legend()
 			plt.grid()
-			plt.savefig(f'./image/server_{i+1}.png', dpi=300)
-			self.send_text(f"服务器{i+1}的信息如下：\n实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}\n内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB\n内存占用率：{server['system']['memUsage']*100:.2f}%\nCPU占用率：{server['system']['cpuUsage']*100:.2f}%\n[CQ:image,file=server_{i+1}.png]")
+
+			if os.path.exists('./image'):
+				pass
+			else:
+				os.mkdir('./image')			
+
+			with open(f'./image/server_{i+1}.png', 'wb+') as image:
+				plt.savefig(f'./image/server_{i+1}.png', dpi=300)
+				base_string = 'base64://' + base64.b64encode(image.read()).decode('utf-8')
+			message = f"服务器{i+1}的信息如下：\n实例(正常/总数)：{server['instance']['running']}/{server['instance']['total']}\n内存使用情况：{(server['system']['totalmem']-server['system']['freemem'])/1024**3:.2f}GB/{server['system']['totalmem']/1024**3:.2f}GB\n内存占用率：{server['system']['memUsage']*100:.2f}%\nCPU占用率：{server['system']['cpuUsage']*100:.2f}%\n[CQ:image,file={base_string}]"
+
+			if self.config.array:
+				message = from_cqcode_into_array(message)
+				self.send_message(message)
+			else:
+				self.send_text(message)
+
 
 	else:
-		return(f"请求失败，状态码为{data['status']}")
+		self.send_text(f"请求失败，状态码为{data['status']}")
 
 
 class CqHttpChatBridgeClient(ChatBridgeClient):
@@ -207,10 +236,10 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 		if cq_bot is None:
 			return
 		try:
-			self.logger.info('Sending message {} to qq'.format(payload.formatted_str()))
-			cq_bot.send_message(sender, payload.formatted_str())
+			self.logger.info('Sending chat {} to qq'.format(payload.formatted_str()))
+			cq_bot.send_text(f'[{sender}] {payload.formatted_str()}')
 		except:
-			self.logger.exception('Error in on_message()')
+			self.logger.exception('Error in on_chat()')
 
 
 	def on_command(self, sender: str, payload: CommandPayload):
