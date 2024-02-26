@@ -10,7 +10,7 @@
 
 - 将CQ码转发成更容易理解的格式 by meng877
 
-- 将图片的CQ麻转为CI码以提供对[ChatImage](https://modrinth.com/mod/chatimage)的支持 by Polaris_Light
+- 将图片的CQCode转为CICode以提供对[ChatImage](https://modrinth.com/mod/chatimage)的支持 by Polaris_Light
 
 - 增加指令!!info 基于MCSM api 获取服务器运行情况 by meng 877
 
