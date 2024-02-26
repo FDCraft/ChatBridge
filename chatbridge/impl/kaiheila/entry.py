@@ -2,7 +2,9 @@ import asyncio
 import collections
 import logging
 import matplotlib.pyplot as plt
+import os
 import queue
+import re
 import requests
 from mcdreforged.api.all import *
 from typing import Optional, List, Union
@@ -79,12 +81,13 @@ class KaiHeiLaBot(Bot):
 					assert isinstance(data, tuple)
 					sender: str = data[0]
 					payload: ChatPayload = data[1]
-					await self.send(await self.client.fetch_public_channel(self.config.channel_for_chat), self.formatMessageToKaiHeiLa('[{}] {}'.format(sender, payload.formatted_str())))
+					message = payload.formatted_str()
+					await self.send(await self.client.fetch_public_channel(self.config.channel_for_chat), f'[{sender}] {message}')
 				elif message_data.type == MessageDataType.CARD:  # embed
 					assert isinstance(data, Card)
 					await self.send(await self.client.fetch_public_channel(message_data.channel), CardMessage(data), type=MessageTypes.CARD)
 				elif message_data.type == MessageDataType.TEXT:
-					await self.send(await self.client.fetch_public_channel(message_data.channel), self.formatMessageToKaiHeiLa(str(data)))
+					await self.send(await self.client.fetch_public_channel(message_data.channel), str(data))
 				else:
 					chatClient.logger.debug('Unknown messageData type {}'.format(message_data.data))
 		except:
@@ -146,7 +149,15 @@ class KaiHeiLaBot(Bot):
 				plt.xlabel("Time")
 				plt.legend()
 				plt.grid()
-				plt.savefig(f'./image/server_{i+1}.png', dpi=300)
+
+				if os.path.exists('./image'):
+					pass
+				else:
+					os.mkdir('./image')	
+
+				with open(f'./image/server_{i+1}.png', 'wb+'):
+					plt.savefig(f'./image/server_{i+1}.png', dpi=300)
+				
 				img_src = await self.client.create_asset(f'./image/server_{i+1}.png')
 				self.messages.put(MessageData(
 					data=Card(
