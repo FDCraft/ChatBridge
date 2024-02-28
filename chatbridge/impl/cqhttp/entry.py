@@ -96,9 +96,9 @@ class CQBot(websocket.WebSocketApp):
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
 
 						if self.config.image_view:
-							msg = re.sub(r'\[CQ:image,file=(.*?)]',r'[[CICode,url=\1,name=图片]]', msg)
+							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*?)*\]',r'[[CICode,url=\1,name=图片]]', msg)
 						else:
-							msg = re.sub(r'\[CQ:image,file=.*?]','[图片]', msg)
+							msg = re.sub(r'\[CQ:image,file=.*?\]','[图片]', msg)
 
 						pattern = r"\[CQ:at,qq=(\d+)\]"
 						if re.search(pattern, msg): 
