@@ -85,9 +85,7 @@ class CQBot(websocket.WebSocketApp):
 						self.send_text('pong!!')
 
 					if len(args) >= 1:
-						sender = data['sender']['card']
-						if data['sender']['card'] is None:
-							sender = data['sender']['nickname']
+						sender = data['sender']['card'] if data['sender']['card'] is None and data['sender']['card'] != '' else data['sender']['nickname']
 
 						msg = raw_message
 						msg = re.sub(r'\[CQ:share,file=.*?\]','[链接]', msg)
@@ -97,6 +95,7 @@ class CQBot(websocket.WebSocketApp):
 
 						if self.config.image_view:
 							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*?)*\]',r'[[CICode,url=\1,name=图片]]', msg)
+							msg = re.sub(r'https://multimedia.nt.qq.com.cn', r'https://gchat.qpic.cn', msg)
 						else:
 							msg = re.sub(r'\[CQ:image,file=.*?\]','[图片]', msg)
 
@@ -109,7 +108,7 @@ class CQBot(websocket.WebSocketApp):
 									api += '&access_token={}'.format(self.config.http_access_token)
 								req = requests.get(api).json()
 								if req is not None:
-									card = req['data']['card'] if req['data']['card'] is not None else req['data']['nickname']
+									card = req['data']['card'] if req['data']['card'] is not None and req['data']['card'] != '' else req['data']['nickname']
 									msg = re.sub(pattern, f"[@{card}]", msg, count=1)
 								else:
 									msg = re.sub(pattern, "[@]", msg, count=1)
