@@ -94,7 +94,7 @@ class CQBot(websocket.WebSocketApp):
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
 
 						if self.config.image_view:
-							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*?)*\]',r'[[CICode,url=\1,name=图片]]', msg)
+							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*)*\]',r'[[CICode,url=\1,name=图片]]', msg)
 							msg = re.sub(r'https://multimedia.nt.qq.com.cn', r'https://gchat.qpic.cn', msg)
 						else:
 							msg = re.sub(r'\[CQ:image,file=.*?\]','[图片]', msg)
