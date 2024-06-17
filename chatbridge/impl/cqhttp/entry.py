@@ -189,7 +189,7 @@ class CQBot(websocket.WebSocketApp):
 
 @new_thread('get_server_info')
 def get_server_info(self: CQBot):
-	url = "http://127.0.0.1:23333/api/service/remote_services_system/?apikey=" + self.config.mcsm_apikey 
+	url = f"http://{self.config.mcsm_address}:{self.config.mcsm_port}/api/service/remote_services_system/?apikey={self.config.mcsm_apikey}"
 	headers = {"x-requested-with": "xmlhttprequest"}
 	req = requests.get(url, headers=headers)
 	data = req.json()

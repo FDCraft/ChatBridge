@@ -1,7 +1,7 @@
 import re
 
 # CQCode <-> Array Message
-# https://docs.go-cqhttp.org/reference/#%E6%B6%88%E6%81%AF
+# See https://docs.go-cqhttp.org/reference/#%E6%B6%88%E6%81%AF
 
 def from_cqcode_into_array(cq_message: str) -> list :
 
@@ -57,7 +57,9 @@ def from_array_to_cqcode(array_message: list) -> str:
      
     return cq_message
 
+# CICode <-> CQCode
+# See https://chatimage.kituin.fun/wiki/chatimage/code/
 
-from_cqcode_to_cicode = lambda cq_message : re.sub(r'\[CQ:image,file=(.*?)(,.*?)*\]',r'[[CICode, url=\1, name=图片]]', cq_message)
+from_cqcode_to_cicode = lambda cq_message : re.sub(r'\[CQ:image,file=(.*?)(,.*?)*\]',r'[[CICode, url=\1, name=图片]]', cq_message).replace('https://multimedia.nt.qq.com.cn', 'https://gchat.qpic.cn')
 
 from_cicode_to_cqcode = lambda ci_message : re.sub(r'\[\[CICode,url=(.*?)(,.*?)*\]\]', r'[CQ:image,file=\1]', ci_message)
