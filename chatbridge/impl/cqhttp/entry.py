@@ -85,33 +85,25 @@ class CQBot(websocket.WebSocketApp):
 						self.send_text('pong!!')
 
 					if len(args) >= 1:
-						sender = data['sender']['card'] if data['sender']['card'] is None and data['sender']['card'] != '' else data['sender']['nickname']
+						sender = data['sender']['card'] if data['sender']['card'] is not None and data['sender']['card'] != '' else data['sender']['nickname']
 
 						msg = raw_message
 						msg = re.sub(r'\[CQ:share,file=.*?\]','[链接]', msg)
 						msg = re.sub(r'\[CQ:face,id=.*?\]','[表情]', msg)
 						msg = re.sub(r'\[CQ:record,file=.*?\]','[语音]', msg)
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
+						msg = re.sub(r"\[CQ:video(,.*)*\]", "[视频]", msg)
+						msg = re.sub(r"\[CQ:json(,.*)*\]", "[B站视频]", msg)
+						msg = re.sub(r'\[CQ:at,qq=all\]','[@全体]', msg)
+						msg = re.sub(r'\[CQ:at,qq=.*?,name=(.*?)\]',r'[\1]', msg)
+						
 
 						if self.config.image_view:
 							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*)*\]',r'[[CICode,url=\1,name=图片]]', msg)
-							msg = re.sub(r'https://multimedia.nt.qq.com.cn', r'https://gchat.qpic.cn', msg)
+							msg = re.sub(r'\[CQ:mface,url=(.*?)(,.*)*\]',r'[[CICode,url=\1,name=表情]]', msg)
 						else:
-							msg = re.sub(r'\[CQ:image,file=.*?\]','[图片]', msg)
-
-						pattern = r"\[CQ:at,qq=(\d+)\]"
-						if re.search(pattern, msg): 
-							id_list = re.findall(pattern, msg)
-							for id in id_list:
-								api = f"http://{self.config.http_address}:{self.config.http_port}/get_group_member_info?group_id={self.config.react_group_id}&user_id={id}&no_cache=true"
-								if self.config.http_access_token is not None and self.config.http_access_token != '':
-									api += '&access_token={}'.format(self.config.http_access_token)
-								req = requests.get(api).json()
-								if req is not None:
-									card = req['data']['card'] if req['data']['card'] is not None and req['data']['card'] != '' else req['data']['nickname']
-									msg = re.sub(pattern, f"[@{card}]", msg, count=1)
-								else:
-									msg = re.sub(pattern, "[@]", msg, count=1)
+							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*)*\]','[图片]', msg)
+							msg = re.sub(r'\[CQ:mface,url=(.*?)(,.*)*\]','[表情]', msg)
 								
 						text = html.unescape(msg)
 						chatClient.broadcast_chat(text, author=sender)
