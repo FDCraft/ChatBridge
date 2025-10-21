@@ -12,7 +12,7 @@
         "WhitePhosphor",
         "meng877"
     ],
-    "link": "https://github.com/TISUnion/ChatBridge",
+    "link": "https://github.com/FDCraft/ChatBridge",
     "dependencies": {
         "mcdreforged": ">=2.2.0-"
     },

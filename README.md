@@ -2,7 +2,7 @@
 
 - 重写Kook客户端以适配新版本的Python与khl.py by Polaris_Light
 
-- 使用[OnlinePlayerAPi](https://github.com/AnzhiZhang/MCDReforgedPlugins/tree/master/online_player_api)替代繁琐的OnlineCommandClient by Polaris_Light
+- 无需 Online Client 即可获取在线人数
   
 - 增加Array上报选项，以支持Lagrange by Polaris_Light
   
@@ -15,8 +15,6 @@
 - 增加指令!!info 基于MCSM api 获取服务器运行情况 by meng 877
 
 - 为KOOK增加指令!!info并将apikey转为配置文件 by Polaris_Light
-
-- QQChannel适配 by WhitePhosphor
 
 # ChatBridge
 
@@ -69,7 +67,6 @@ ChatBridge 是一个为 TIS 服务器定制使用的工具，尤其是 bot/指�
 - CQHttp 客户端
 - Discord 客户端
 - Kaiheila 客户端
-- ~~Online 指令客户端~~
 
 因此，对于这些 bot 及相关的客户端：
 
@@ -218,8 +215,8 @@ Extra configure fields (compared to [CLI client](#cli-client))
     "array": false, // Whether use array-like message, usually false
     "react_group_id": 12345,  // the target QQ group id
     "client_to_query_stats": "MyClient1",  // it should be a client as an MCDR plugin, with stats_helper plugin installed in the MCDR
-    "client_to_query_online": "MyClient2",  // a client described in the following section "Client to respond online command"
-    "server_display_name": "TIS",  // The name of the server, used for display in some places
+    "client_to_query_online": "MyClient2",  // useless now
+    "server_display_name": "TIS",  // useless now
     "mcsm_apikey": "",  // The apikey of mcsm superuser
     "image_view": false  // Change image CQCode into CICode to support ChatImage
 ```
