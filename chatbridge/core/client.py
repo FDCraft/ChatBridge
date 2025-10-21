@@ -328,6 +328,9 @@ class ChatBridgeClient(ChatBridgeBase):
 
 	def send_command(self, target: str, command: str, params: Optional[Union[Serializable, dict]] = None):
 		self.send_to(PacketType.command, target, CommandPayload.ask(command, params))
+  
+	def broadcast_command(self,command: str, params: Optional[Union[Serializable, dict]] = None):
+		self.send_to_all(PacketType.command, CommandPayload.ask(command, params))
 
 	def reply_command(self, target: str, asker_payload: 'CommandPayload', result: Union[Serializable, dict]):
 		self.send_to(PacketType.command, target, CommandPayload.answer(asker_payload, result))

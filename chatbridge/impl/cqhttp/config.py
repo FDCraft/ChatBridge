@@ -12,7 +12,4 @@ class CqHttpConfig(ClientConfig):
 	react_group_id: int = 12345
 	client_to_query_stats: str = 'MyClient1'
 	client_to_query_online: str = 'MyClient2'
-	mcsm_address: str = "127.0.0.1"
-	mcsm_port: int = 23333
-	mcsm_apikey: str = ''
 	image_view: bool = False

@@ -3,8 +3,10 @@ import html
 import json
 import os
 import re
+import threading
+import time
 from mcdreforged.api.all import *
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 import matplotlib.pyplot as plt
@@ -46,7 +48,7 @@ StatsHelpMessage = '''
 
 
 
-class CQBot(websocket.WebSocketApp):
+class CQBot(websocket._app.WebSocketApp):
 	def __init__(self, config: CqHttpConfig):
 		self.config = config
 		websocket.enableTrace(True)
@@ -93,18 +95,16 @@ class CQBot(websocket.WebSocketApp):
 						msg = re.sub(r'\[CQ:record,file=.*?\]','[语音]', msg)
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
 						msg = re.sub(r"\[CQ:video(,.*)*\]", "[视频]", msg)
-						msg = re.sub(r"\[CQ:json(,.*)*\]", "[B站视频]", msg)
+						msg = re.sub(r"\[CQ:json.*?\]", "[JSON]", msg,flags=re.DOTALL)
 						msg = re.sub(r'\[CQ:at,qq=all\]','[@全体]', msg)
-						msg = re.sub(r'\[CQ:at,qq=.*?,name=(.*?)\]',r'[\1]', msg)
+						msg = re.sub(r'\[CQ:at,qq=.*?,name=(.*?)\]',r'[@\1]', msg)
+						msg = re.sub(r'\[CQ:at,qq=(.*?)\]',r'[@\1]', msg)
 						
 
 						if self.config.image_view:
-							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*)*\]',r'[[CICode,url=\1,name=图片]]', msg)
-							msg = re.sub(r'\[CQ:mface,url=(.*?)(,.*)*\]',r'[[CICode,url=\1,name=表情]]', msg)
+							msg = re.sub(r'\[CQ:image,.*?url=([^,\]]+)[^\]]*?\]', r'[[CICode,url=\1,name=图片]]', msg)
 						else:
-							msg = re.sub(r'\[CQ:image,file=(.*?)(,.*)*\]','[图片]', msg)
-							msg = re.sub(r'\[CQ:mface,url=(.*?)(,.*)*\]','[表情]', msg)
-								
+							msg = re.sub(r'\[CQ:image,.*?url=([^,^\]]+)[^\]]*?\]','[图片]', msg)
 						text = html.unescape(msg)
 						chatClient.broadcast_chat(text, author=sender)
 
@@ -113,13 +113,20 @@ class CQBot(websocket.WebSocketApp):
 						self.send_text('正在通过api获取服务器运行信息，请稍后...')
 						get_server_info(self)
 
-					if len(args) == 1 and args[0] == '!!online':
+					if len(args) >= 1 and args[0] in ['!!online', 'online', 'on']:
 						self.logger.info('!!online command triggered')
 						if chatClient.is_online():
-							command = args[0]
-							client = self.config.client_to_query_online
-							self.logger.info('Sending command "{}" to client {}'.format(command, client))
-							chatClient.send_command(client, command)
+							command = '!!online'
+							if len(args) == 1:
+								self.logger.info('Broadcas command "{}"'.format(command))
+								chatClient.register_collector('!!online', chatClient.collect_online_result)
+								chatClient.broadcast_command(command)
+								timer = threading.Timer(0.5, chatClient.stop_collect_online)
+								timer.start()
+							else:
+								client = self.config.client_to_query_online if len(args) == 1 else args[1]
+								self.logger.info('Sending command "{}" to client {}'.format(command, client))
+								chatClient.send_command(client, command)
 						else:
 							self.send_text('ChatBridge 客户端离线')
 
@@ -222,6 +229,18 @@ def get_server_info(self: CQBot):
 
 
 class CqHttpChatBridgeClient(ChatBridgeClient):
+	command_collectors = {}  # command -> List[Callable]
+	online_players = {}
+
+	def register_collector(self, command: str, callback: Callable):
+		self.command_collectors.setdefault(command, []).append(callback)
+
+	def unregister_collector(self, command: str, callback: Callable):
+		if command in self.command_collectors:
+			self.command_collectors[command].remove(callback)
+			if not self.command_collectors[command]:
+				del self.command_collectors[command]
+                
 	def on_chat(self, sender: str, payload: ChatPayload):
 		global cq_bot
 		if cq_bot is None:
@@ -234,6 +253,11 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 
 
 	def on_command(self, sender: str, payload: CommandPayload):
+		if payload.responded and payload.command in self.command_collectors:
+			for callback in self.command_collectors[payload.command]:
+				callback(sender, payload)
+			return
+        
 		if not payload.responded:
 			return
 		if payload.command.startswith('!!stats '):
@@ -251,11 +275,25 @@ class CqHttpChatBridgeClient(ChatBridgeClient):
 			result = OnlineQueryResult.deserialize(payload.result)
 			if result.success:
 				if result.data == []:
-					cq_bot.send_text('当前没有玩家在线！')
+					cq_bot.send_text('当前 {} 没有玩家在线！'.format(sender))
 				else:
-					cq_bot.send_text('====== 玩家列表 ======\n{}'.format('\n'.join(result.data)))
+					cq_bot.send_text('====== {} 玩家列表 ======\n{}'.format(sender, '\n'.join(result.data)))
 			elif result.error_code == 2:
 				cq_bot.send_text('OnlinePlayerAPI 插件未加载')
+
+	def collect_online_result(self, sender, payload: CommandPayload):
+		result = OnlineQueryResult.deserialize(payload.result)
+		self.online_players[sender] = result.data
+  
+	def stop_collect_online(self):
+		chatClient.unregister_collector('!!online', self.collect_online_result)
+		message = '====== 玩家列表 ======\n'
+		for sender, result in self.online_players.items():
+			if len(result) > 0:
+				message += '【{}】(共{}人)：\n{}\n'.format(sender, len(result), '\n'.join(result))
+			else:
+				message += '【{}】(无在线玩家)\n'.format(sender)
+		cq_bot.send_text(message)
 
 def main():
 	global chatClient, cq_bot
