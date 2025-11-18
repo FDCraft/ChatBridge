@@ -90,12 +90,14 @@ class CQBot(websocket._app.WebSocketApp):
 						sender = data['sender']['card'] if data['sender']['card'] is not None and data['sender']['card'] != '' else data['sender']['nickname']
 
 						msg = raw_message
+						if "CQ:json" in msg:
+							msg = "[JSON]"
 						msg = re.sub(r'\[CQ:share,file=.*?\]','[链接]', msg)
 						msg = re.sub(r'\[CQ:face,id=.*?\]','[表情]', msg)
 						msg = re.sub(r'\[CQ:record,file=.*?\]','[语音]', msg)
 						msg = re.sub(r"\[CQ:reply,id=.*?\]", "[回复]", msg)
 						msg = re.sub(r"\[CQ:video(,.*)*\]", "[视频]", msg)
-						msg = re.sub(r"\[CQ:json.*?\]", "[JSON]", msg,flags=re.DOTALL)
+						#msg = re.sub(r"\[CQ:json.*?\]", "[JSON]", msg,flags=re.DOTALL)
 						msg = re.sub(r'\[CQ:at,qq=all\]','[@全体]', msg)
 						msg = re.sub(r'\[CQ:at,qq=.*?,name=(.*?)\]',r'[@\1]', msg)
 						msg = re.sub(r'\[CQ:at,qq=(.*?)\]',r'[@\1]', msg)
@@ -120,6 +122,7 @@ class CQBot(websocket._app.WebSocketApp):
 							if len(args) == 1:
 								self.logger.info('Broadcas command "{}"'.format(command))
 								chatClient.register_collector('!!online', chatClient.collect_online_result)
+								chatClient.online_players = {}
 								chatClient.broadcast_command(command)
 								timer = threading.Timer(0.5, chatClient.stop_collect_online)
 								timer.start()
