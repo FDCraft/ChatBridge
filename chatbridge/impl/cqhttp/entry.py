@@ -90,6 +90,8 @@ class CQBot(websocket._app.WebSocketApp):
 						sender = data['sender']['card'] if data['sender']['card'] is not None and data['sender']['card'] != '' else data['sender']['nickname']
 
 						msg = raw_message
+						if 'CQ:markdown' in msg:
+							msg = "[MD]"
 						if "CQ:json" in msg:
 							msg = "[JSON]"
 						msg = re.sub(r'\[CQ:share,file=.*?\]','[链接]', msg)

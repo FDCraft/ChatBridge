@@ -1,6 +1,7 @@
 /.idea
 /release
 /logs
+/Test
 test.py
 *.log
 *.pyc

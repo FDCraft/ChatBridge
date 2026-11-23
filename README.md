@@ -14,6 +14,8 @@
 
 - 增加指令!!info 基于MCSM api 获取服务器运行情况 by meng 877
 
+- 增加 Milky 协议客户端，消息全程使用消息段数组处理
+
 - 为KOOK增加指令!!info并将apikey转为配置文件 by Polaris_Light
 
 # ChatBridge
@@ -219,6 +221,32 @@ Extra configure fields (compared to [CLI client](#cli-client))
     "server_display_name": "TIS",  // useless now
     "mcsm_apikey": "",  // The apikey of mcsm superuser
     "image_view": false  // Change image CQCode into CICode to support ChatImage
+```
+
+## Milky bot client
+
+`python ChatBridge.pyz milky_bot`
+
+Extra requirements (also listed in `/chatbridge/impl/milky/requirements.txt`):
+
+```
+websocket-client>=1.2.1
+requests
+```
+
+Needs a [Milky](https://milky.ntqqrev.org/) protocol implementation to work. 
+
+Extra configure fields (compared to [CLI client](#cli-client))
+
+```json5
+    "milky_address": "127.0.0.1",  // the address of the Milky protocol implementation
+    "milky_port": 3010,  // the port of the Milky protocol implementation HTTP server
+    "milky_access_token": "",  // optional access token
+    "react_group_id": 12345,  // the target QQ group id
+    "client_to_query_stats": "MyClient1",  // it should be a client as an MCDR plugin, with stats_helper plugin installed in the MCDR
+    "client_to_query_online": "MyClient2",  // useless now
+    "image_view": false,  // Change image segments into CICode to support ChatImage
+    "max_message_length": 500  // split long messages into several segment arrays
 ```
 
 ## Kaiheila bot client
